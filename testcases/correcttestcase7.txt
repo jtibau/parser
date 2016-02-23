@@ -1,0 +1,15 @@
+int a, b,c, d;
+float x, x1, y, y1, z, z1;
+string s1, s2, s3;
+int e;
+
+a = 123;
+c = (4560);
+x1 = 23.821;
+s1 = "Hello";
+
+b = 49 * a * 3 / (c-(d+123));
+
+s2 = s1 + s3;
+
+z = e

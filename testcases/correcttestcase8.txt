@@ -1,0 +1,7 @@
+bool bool1, bool2;
+string s1, s2, s3;
+
+if bool1 then
+	bool1 = bool2
+else
+	s2 = s1 + s3
