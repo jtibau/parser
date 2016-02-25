@@ -92,8 +92,8 @@ lookup(Nm,dic(Other,_,_,Right),Val):-
 
 %% The prefix TS stands for TokenStream, as suggested by Cory Bart in his 
 
-%% program(TSBefore, TSAfter, ResultTree) :-
-%%     typeDeclarationStatementList(TSBefore, TSAfterDeclaration, CurrentResultTree).
+programParser(TSBefore, TSAfter, (DeclarationTree)) :-
+     variableDeclarationList(TSBefore, TSAfter, DeclarationTree).
     %% statementList(TSAfterDeclaration, TSAfter, CurrentResultTree, ResultTree).
 
 
@@ -105,8 +105,7 @@ lookup(Nm,dic(Other,_,_,Right),Val):-
 %% <simple-type> --> int | float | string | bool
 
 
-%%% This looks like recursion but it's not... WHY???!!!
-declarationList(TSBefore,TSAfter,declarationList(ResultTree)):-
+variableDeclarationList(TSBefore,TSAfter,declarationList(ResultTree)):-
     typeDeclarationStatementList(TSBefore,TSAfter,ResultTree).
 
 typeDeclarationStatementList(TSBefore, TSAfter, ResultTree):-
@@ -120,7 +119,7 @@ restOfTypeDeclarationStatements(TSAfter,TSAfter,ResultTree,[ResultTree]).
 
 %% typeDeclarationStatementList(TSBefore, TSAfter, ResultTree):-
 
-typeDeclarationStatement( [Type | TSBefore], TSAfter, declaration(Type,Names) ):-
+typeDeclarationStatement( [Type | TSBefore], TSAfter,(Type,Names) ):-
     type(Type),
     nameList(TSBefore, TSAfter, Names).
 
@@ -134,7 +133,6 @@ simpleType(string).
 simpleType(bool).
 
 
-%%% Unhappy about this indirect recursion deal
 nameList(TSBefore, TSAfter, ResultTree):-
     name(TSBefore, TSAfterStatement, CurrentResult) ,
     restOfNameList(TSAfterStatement, TSAfter, CurrentResult, ResultTree).
@@ -148,6 +146,36 @@ restOfNameList(TSAfter, TSAfter, ResultTree, [ResultTree]).
 name([Name|TSAfter],TSAfter,Name):-
     atom(Name).
 
+%% <program> --> <type-decl-stmts> ; <stmts>   
+%% <stmts> --> <stmt> | <stmts> ; <stmt>
+%% <stmt> --> <assignStmt> | <ifStmt>
+%% <assignStmt> -->  <id> = <expr>
+%% <id> --> <name> |  <id>.<name> | <id> [ <expr> ]
+
+%% <expr> --> <expr> <op1> <expr1> | <expr1>
+%% <expr1> --> <expr1> <op2> <expr0> | <expr0>
+%% <expr0> --> <id> | <integer> | <numWDecimal> | <stringLiteral> | (<expr>) 
+%% <comparOp> --> == | < | > | <= | >= | <> (not equal)
+
+op1(+).
+op1(-).
+op2(*).
+op2(/).
+
+name(X) :- atom(X).
+id(X) :- name(X).
+
+%% <assignStmt> -->  <id> = <expr>
+assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpressionTree))):-
+    id(ID),
+    expression(TSBefore,TSAfter,ExpressionTree).
+
+%% <expr0> --> <id> | <integer> | <numWDecimal> | <stringLiteral> | (<expr>) 
+expression0([X|TSAfter],TSAfter,id(X)):- id(X).
+
+expression1(TSBefore,TSAfter,ResultTree):- expression0(TSBefore,TSAfter,ResultTree).
+
+expression(TSBefore,TSAfter,ResultTree):- expression1(TSBefore,TSAfter,ResultTree).
 
 %% statementList(TSBefore, TSAfter, ResultTree):-
 %%     statement(TSBefore, TSAfterStatement, CurrentResult) ,
