@@ -167,7 +167,14 @@ assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpressionTree
 
 
 %% <expr0> --> <id> | <integer> | <numWDecimal> | <stringLiteral> | (<expr>) 
-expression0([X|TSAfter],TSAfter,id(X)):- id(X).
+expression0([X|TSAfter],TSAfter,id(X)):-
+    id(X).
+expression0([X|TSAfter],TSAfter,integer(X)):-
+    integer(X).
+expression0([X|TSAfter],TSAfter,float(X)):-
+    float(X).
+expression0([X|TSAfter],TSAfter,string(X)):-
+    string(X).
 expression0( ['('|TSBefore] , TSAfter , RT ):- 
     expression(TSBefore, [ ')' | TSAfter ], RT).
 
