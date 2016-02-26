@@ -126,9 +126,9 @@ typeDeclarationStatementList(TSBefore, TSAfter, [RT1|RTR]):-
 
 %% <name-list> --> <name> | <name>, <name-list> 
 nameList([Name|TSAfter], TSAfter, [Name]).
-nameList([Name,','|TSBefore], TSAfter, [Name|ResultTree]):-
+nameList([Name,','|TSBefore], TSAfter, [Name|RT]):-
     name(Name),
-    nameList(TSBefore, TSAfter, ResultTree).
+    nameList(TSBefore, TSAfter, RT).
 
 %% <stmts> --> <stmt> | <stmts> ; <stmt>
 %% <stmt> --> <assignStmt> | <ifStmt>
@@ -160,92 +160,32 @@ statement(TSBefore,TSAfter,RT):-
     assignmentStmt(TSBefore,TSAfter,RT).
 
 %% <assignStmt> -->  <id> = <expr>
-assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpressionTree))):-
+assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpRT))):-
     id(ID),
-    expression(TSBefore,TSAfter,ExpressionTree).
-
+    expression(TSBefore,TSAfter,ExpRT).
 
 
 %% <expr0> --> <id> | <integer> | <numWDecimal> | <stringLiteral> | (<expr>) 
-expression0([X|TSAfter],TSAfter,id(X)):-
-    id(X).
-expression0([X|TSAfter],TSAfter,integer(X)):-
-    integer(X).
-expression0([X|TSAfter],TSAfter,float(X)):-
-    float(X).
-expression0([X|TSAfter],TSAfter,string(X)):-
-    string(X).
+expression0([X|TSAfter],TSAfter,id(X)):- id(X).
+expression0([X|TSAfter],TSAfter,integer(X)):- integer(X).
+expression0([X|TSAfter],TSAfter,float(X)):- float(X).
+expression0([X|TSAfter],TSAfter,string(X)):- string(X).
 expression0( ['('|TSBefore] , TSAfter , RT ):- 
     expression(TSBefore, [ ')' | TSAfter ], RT).
 
-expression1(TSBefore,TSAfter,ResultTree):- expression0(TSBefore,TSAfter,ResultTree).
+%% <expr1> --> <expr1> <op2> <expr0> | <expr0>
+expression1(TSBefore,TSAfter,expr1(OP,RT0,RT1)):-
+    expression0(TSBefore,[OP|TSAfter1],RT0),
+    op2(OP),
+    expression1(TSAfter1,TSAfter,RT1).
+expression1(TSBefore,TSAfter,RT):- expression0(TSBefore,TSAfter,RT).
 
-expression(TSBefore,TSAfter,ResultTree):- expression1(TSBefore,TSAfter,ResultTree).
-
-%% statementList(TSBefore, TSAfter, ResultTree):-
-%%     statement(TSBefore, TSAfterStatement, CurrentResult) ,
-%%     restOfStatementList(TSAfterStatement, TSAfter, CurrentResult, ResultTree).
-
-%% restOfStatementList([';'|TSBefore], TSAfter, CurrentResult, [CurrentResult, ; | [ResultTree] ]) :-
-%%     statementList(TSBefore, TSAfter, ResultTree).
-
-%% restOfStatementList(TSAfter, TSAfter, ResultTree, ResultTree).
-
-%% statement([VariableName,:=|TSBefore], TSAfter, assign(name(VariableName), ExpressionResult)) :-
-%%     atom(VariableName) ,
-%%     expression(TSBefore, TSAfter, ExpressionResult).
-
-%% statement([if|TSBefore], TSAfter, if(TestResult, ThenResult, ElseResult)) :-
-%%     test(TSBefore, [then|TSAfterThen], TestResult) ,
-%%     statement(TSAfterThen, [else|TSAfterElse], ThenResult) ,
-%%     statement(TSAfterElse, TSAfter, ElseResult).
-
-%% statement([while|TSBefore], TSAfter, while(TestResult, DoResult)):-
-%%     test(TSBefore, [do|TSAfterDo], TestResult) ,
-%%     statement(TSAfterDo, TSAfter, DoResult).
-
-%% statement([read, VariableName|TSAfter], TSAfter, read(name(VariableName))) :-
-%%     atom(VariableName).
-
-%% statement([write|TSBefore], TSAfter, write(Expression)) :-
-%%     expression(TSBefore, TSAfter, Expression).
-
-%% statement(['('|TSBefore], TSAfter, StatementResult) :-
-%%     statements(TSBefore, [ ')' | TSAfter], StatementResult).
-
-%% statement([other | TSAfter], TSAfter, other).
-
-%% test(TSBefore, TSAfter, test(Operation, LeftResultTree, RightResultTree)):-
-%%     expression(TSBefore, [Operation | TSAfterLeft], LeftResultTree) ,
-%%     comparisonOperator(Operation) ,
-%%     expression(TSAfterLeft, TSAfter, RightResultTree).
-
-%% expression(TSBefore, TSAfter, ResultTree) :-
-%%     subexpression(2, TSBefore, TSAfter, ResultTree).
-
-%% subexpression(Precedence, TSBefore, TSAfter, ResultTree) :-
-%%     Precedence > 0 ,
-%%     NextPrecedence is Precedence - 1 ,
-%%     subexpression(NextPrecedence, TSBefore, TSAfterExpression, SubexpressionResultTree) ,
-%%     restOfExpressions(Precedence, TSAfterExpression, TSAfter, SubexpressionResultTree, ResultTree).
-
-%% subexpression(0, [ResultTree|TSAfter], TSAfter, name(ResultTree)) :-
-%%     atom(ResultTree).
-
-%% subexpression(0, [ResultTree|TSAfter], TSAfter, const(ResultTree)) :-
-%%     integer(ResultTree).
-
-%% subexpression(0, ['('|TSBefore], TSAfter, ResultTree) :-
-%%     subexpression(2, TSBefore, [')'|TSAfter], ResultTree).
-
-%% restOfExpressions(Precedence, [Operator|TSBefore], TSAfter, ExpressionResultTree, ResultTree) :-
-%%     operator(Precedence, Operator),
-%%     NextPrecedence is Precedence - 1,
-%%     subexpression(NextPrecedence, TSBefore, TSAfterSubexpression, SubexpressionResultTree) ,
-%%     restOfExpressions(Precedence, TSAfterSubexpression, TSAfter, expression(Operator, ExpressionResultTree, SubexpressionResultTree), ResultTree).
-
-%% restOfExpressions(_AnyPrecedence, TSAfter, TSAfter, ResultTree, ResultTree).
-
+%% <expr> --> <expr> <op1> <expr1> | <expr1>
+expression(TSBefore,TSAfter,expr(OP,RT1,RTSub)):-
+    expression1(TSBefore,[OP|TSAfter1],RT1),
+    op1(OP),
+    expression(TSAfter1,TSAfter,RTSub).
+expression(TSBefore,TSAfter,RT):- expression1(TSBefore,TSAfter,RT).
 
 
 comparisonOperator(==).
@@ -255,16 +195,11 @@ comparisonOperator(>=).
 comparisonOperator(<=).
 comparisonOperator(<>).
 
-operator(2,*).
-operator(2,/).
-operator(1,+).
-operator(1,-).
-
-typecheck(FileName,TSAfter,ResultTree):- 
+typecheck(FileName,TSAfter,RT):- 
     open(FileName, 'read', InputStream),
     read_stream_to_codes(InputStream, ProgramString),
     close(InputStream),
     phrase(tokenize(TSBefore), ProgramString),
-    program(TSBefore, TSAfter, ResultTree).
-    %% traverse(ResultTree, FirstError),
+    program(TSBefore, TSAfter, RT).
+    %% traverse(RT, FirstError),
     %% reportError(FirstError).
