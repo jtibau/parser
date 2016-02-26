@@ -1,3 +1,5 @@
+list([H|T],H,T).
+
 %% Tokenizer code
 %Created by Bruno Dufour, Fall 2005
 %
@@ -89,68 +91,48 @@ lookup(Nm,dic(Other,_,_,Right),Val):-
 %% p3(D):-p(D), lookup(mustard,D,dijon).
 %% p4(D):-p(D), lookup(salt,D, X5). %% lookup with another var is no-op
 
+%% <program> --> <type-decl-stmts> ; <stmts>   
+program(TSBefore, TSAfter, (declarations(DeclarationTree),statements(StatementList))) :-
+     typeDeclarationStatementList(TSBefore, TSAfterDeclaration, DeclarationTree),
+     list(TSAfterDeclaration,';',T),
+     statementList(T, TSAfter, StatementList).
 
-%% The prefix TS stands for TokenStream, as suggested by Cory Bart in his 
-
-programParser(TSBefore, TSAfter, (DeclarationTree)) :-
-     variableDeclarationList(TSBefore, TSAfter, DeclarationTree).
-    %% statementList(TSAfterDeclaration, TSAfter, CurrentResultTree, ResultTree).
-
-
-%% Grammar for type declaration statements
-%% <type-decl-stmts> --> <type-decl> | <type-decl-stmts> ; <type-decl>
-%% <type-decl> --> <type> <name-list> 
-%% <name-list> --> <name> | <name>, <name-list> 
-%% <type> --> <simple-type> | <array-type>  | <struct-type>
 %% <simple-type> --> int | float | string | bool
-
-
-variableDeclarationList(TSBefore,TSAfter,declarationList(ResultTree)):-
-    typeDeclarationStatementList(TSBefore,TSAfter,ResultTree).
-
-typeDeclarationStatementList(TSBefore, TSAfter, ResultTree):-
-    typeDeclarationStatement(TSBefore, TSAfterStatement, CurrentResult),
-    restOfTypeDeclarationStatements(TSAfterStatement,TSAfter,CurrentResult,ResultTree).
-
-restOfTypeDeclarationStatements([';'|TSBefore], TSAfter, CurrentResult, [CurrentResult | ResultTree]):-
-    typeDeclarationStatementList(TSBefore,TSAfter,ResultTree).
-
-restOfTypeDeclarationStatements(TSAfter,TSAfter,ResultTree,[ResultTree]).
-
-%% typeDeclarationStatementList(TSBefore, TSAfter, ResultTree):-
-
-typeDeclarationStatement( [Type | TSBefore], TSAfter,(Type,Names) ):-
-    type(Type),
-    nameList(TSBefore, TSAfter, Names).
-
-
-%% Future room for arrays and structs
-type(X) :- simpleType(X).
-
 simpleType(int).
 simpleType(float).
 simpleType(string).
 simpleType(bool).
 
+%% <type> --> <simple-type> | <array-type>  | <struct-type>
+%% Should use the space bellow the following line, for stages 2 and 3 of this project.
+type(X) :- simpleType(X).
 
-nameList(TSBefore, TSAfter, ResultTree):-
-    name(TSBefore, TSAfterStatement, CurrentResult) ,
-    restOfNameList(TSAfterStatement, TSAfter, CurrentResult, ResultTree).
+%% Assume <name> is a sequence of letters and numbers beginning with a letter. 
+%%% Have to improve this.
+name(X) :- atom(X).
 
-restOfNameList([','|TSBefore], TSAfter, CurrentResult, [CurrentResult | ResultTree ]) :-
+%% <type-decl> --> <type> <name-list> 
+typeDeclarationStatement( [Type | TSBefore], TSAfter,typeDeclaration(Type,Names) ):-
+    type(Type),
+    nameList(TSBefore, TSAfter, Names).
+
+%% <type-decl-stmts> --> <type-decl> | <type-decl-stmts> ; <type-decl>
+typeDeclarationStatementList(TSBefore, TSAfter, [RT]):-
+    typeDeclarationStatement(TSBefore, TSAfter, RT).
+typeDeclarationStatementList(TSBefore, TSAfter, [RT1|RTR]):-
+    typeDeclarationStatement(TSBefore, TSAfter1, RT1),
+    list(TSAfter1,';',T),
+    typeDeclarationStatementList(T,TSAfter,RTR).
+
+%% <name-list> --> <name> | <name>, <name-list> 
+nameList([Name|TSAfter], TSAfter, [Name]).
+nameList([Name,','|TSBefore], TSAfter, [Name|ResultTree]):-
+    name(Name),
     nameList(TSBefore, TSAfter, ResultTree).
 
-restOfNameList(TSAfter, TSAfter, ResultTree, [ResultTree]).
-
-%%% Should I check that Name is not a simpleType???
-name([Name|TSAfter],TSAfter,Name):-
-    atom(Name).
-
-%% <program> --> <type-decl-stmts> ; <stmts>   
 %% <stmts> --> <stmt> | <stmts> ; <stmt>
 %% <stmt> --> <assignStmt> | <ifStmt>
 %% <assignStmt> -->  <id> = <expr>
-%% <id> --> <name> |  <id>.<name> | <id> [ <expr> ]
 
 %% <expr> --> <expr> <op1> <expr1> | <expr1>
 %% <expr1> --> <expr1> <op2> <expr0> | <expr0>
@@ -162,16 +144,32 @@ op1(-).
 op2(*).
 op2(/).
 
-name(X) :- atom(X).
+%% <id> --> <name> |  <id>.<name> | <id> [ <expr> ]
 id(X) :- name(X).
+
+%% <stmts> --> <stmt> | <stmts> ; <stmt>
+statementList(TSBefore,TSAfter,[RT]):-
+    statement(TSBefore,TSAfter,RT).
+statementList(TSBefore,TSAfter,[RT1|RTR]):-
+    statement(TSBefore,TSAfter1,RT1),
+    list(TSAfter1,';',T),
+    statementList(T,TSAfter,RTR).
+
+%% <stmt> --> <assignStmt> | <ifStmt>
+statement(TSBefore,TSAfter,RT):-
+    assignmentStmt(TSBefore,TSAfter,RT).
 
 %% <assignStmt> -->  <id> = <expr>
 assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpressionTree))):-
     id(ID),
     expression(TSBefore,TSAfter,ExpressionTree).
 
+
+
 %% <expr0> --> <id> | <integer> | <numWDecimal> | <stringLiteral> | (<expr>) 
 expression0([X|TSAfter],TSAfter,id(X)):- id(X).
+expression0( ['('|TSBefore] , TSAfter , RT ):- 
+    expression(TSBefore, [ ')' | TSAfter ], RT).
 
 expression1(TSBefore,TSAfter,ResultTree):- expression0(TSBefore,TSAfter,ResultTree).
 
