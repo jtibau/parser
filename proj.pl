@@ -130,19 +130,21 @@ nameList([Name,','|TSBefore], TSAfter, [Name|RT]):-
     name(Name),
     nameList(TSBefore, TSAfter, RT).
 
-%% <stmts> --> <stmt> | <stmts> ; <stmt>
-%% <stmt> --> <assignStmt> | <ifStmt>
-%% <assignStmt> -->  <id> = <expr>
-
-%% <expr> --> <expr> <op1> <expr1> | <expr1>
-%% <expr1> --> <expr1> <op2> <expr0> | <expr0>
-%% <expr0> --> <id> | <integer> | <numWDecimal> | <stringLiteral> | (<expr>) 
-%% <comparOp> --> == | < | > | <= | >= | <> (not equal)
-
 op1(+).
 op1(-).
 op2(*).
 op2(/).
+
+%% <comparOp> --> == | < | > | <= | >= | <> (not equal)
+comparOp(==).
+comparOp(>).
+comparOp(<).
+comparOp(>=).
+comparOp(<=).
+comparOp(<>).
+
+%% <string-op> --> + (concatenation)
+stringOp(+).
 
 %% <id> --> <name> |  <id>.<name> | <id> [ <expr> ]
 id(X) :- name(X).
@@ -188,18 +190,25 @@ expression(TSBefore,TSAfter,expr(OP,RT1,RTSub)):-
 expression(TSBefore,TSAfter,RT):- expression1(TSBefore,TSAfter,RT).
 
 
-comparisonOperator(==).
-comparisonOperator(>).
-comparisonOperator(<).
-comparisonOperator(>=).
-comparisonOperator(<=).
-comparisonOperator(<>).
+%% <ifStmt> --> if <test> then <stmt> else <stmt>
+ifStatement([if | TSBefore],TSAfter,if(TestRT,ThenRT,ElseRT)):-
+    test(TSBefore,[then|TSAfterThen],TestRT),
+    statement(TSAfterThen,[else|TSAfterElse],ThenRT),
+    statement(TSAfterElse,TSAfter,ElseRT).
 
-typecheck(FileName,TSAfter,RT):- 
+%% <test> --> <expr> <compareOp> <expr> | <name>
+test(TSBefore,TSAfter,test(OP,FirstExpRT,SecondExpRT)):-
+    expression(TSBefore,[OP|TSAfterE],FirstExpRT),
+    comparOp(OP),
+    expression(TSAfterE,TSAfter,SecondExpRT).
+test([Name|TSAfter],TSAfter,name(Name)):- name(Name).
+
+
+typecheck(FileName,TSBefore):- 
     open(FileName, 'read', InputStream),
     read_stream_to_codes(InputStream, ProgramString),
     close(InputStream),
-    phrase(tokenize(TSBefore), ProgramString),
-    program(TSBefore, TSAfter, RT).
+    phrase(tokenize(TSBefore), ProgramString).
+    %% program(TSBefore, [], RT).
     %% traverse(RT, FirstError),
     %% reportError(FirstError).
