@@ -58,7 +58,7 @@ tokenize(Result) --> floatlit(F), tokenize(Rest), {Result=[F|Rest]}.
 % Tokenize string
 tokenize(Result) --> stringlit(S), tokenize(Rest), {Result=[S|Rest]}.
 % Tokenize id / int
-tokenize(Result)-->gather(Chars),{\+ Chars =[]},tokenize(RestResult), 
+tokenize(Result) --> gather(Chars),{\+ Chars =[]},tokenize(RestResult), 
                     {name(N,Chars), Result=[N|RestResult]}. 
 % Discard whitespace
 tokenize(R)-->[C],{C<33},tokenize(R).
@@ -158,8 +158,9 @@ statementList(TSBefore,TSAfter,[RT1|RTR]):-
     statementList(T,TSAfter,RTR).
 
 %% <stmt> --> <assignStmt> | <ifStmt>
-statement(TSBefore,TSAfter,RT):-
-    assignmentStmt(TSBefore,TSAfter,RT).
+statement(TSBefore,TSAfter,RT):- assignmentStmt(TSBefore,TSAfter,RT).
+
+statement(TSBefore,TSAfter,RT):- ifStatement(TSBefore,TSAfter,RT).
 
 %% <assignStmt> -->  <id> = <expr>
 assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpRT))):-
@@ -203,12 +204,11 @@ test(TSBefore,TSAfter,test(OP,FirstExpRT,SecondExpRT)):-
     expression(TSAfterE,TSAfter,SecondExpRT).
 test([Name|TSAfter],TSAfter,name(Name)):- name(Name).
 
-
-typecheck(FileName,TSBefore):- 
+typecheck(FileName,RT):- 
     open(FileName, 'read', InputStream),
     read_stream_to_codes(InputStream, ProgramString),
     close(InputStream),
-    phrase(tokenize(TSBefore), ProgramString).
-    %% program(TSBefore, [], RT).
+    phrase(tokenize(TSBefore), ProgramString),
+    program(TSBefore, [], RT).
     %% traverse(RT, FirstError),
     %% reportError(FirstError).
