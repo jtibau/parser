@@ -146,14 +146,14 @@ assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpRT))):-
 
 %% <expr0> --> <id> | <integer> | <numWDecimal> | <stringLiteral> | (<expr>) 
 expression0([X|TSAfter],TSAfter,id(X)):- id(X).
-expression0([X|TSAfter],TSAfter,integer(X)):- integer(X).
+expression0([X|TSAfter],TSAfter,int(X)):- integer(X).
 expression0([X|TSAfter],TSAfter,float(X)):- float(X).
 expression0([X|TSAfter],TSAfter,string(X)):- string(X).
 expression0( ['('|TSBefore] , TSAfter , RT ):- 
     expression(TSBefore, [ ')' | TSAfter ], RT).
 
 %% <expr1> --> <expr1> <op2> <expr0> | <expr0>
-expression1(TSBefore,TSAfter,expr1(OP,RT0,RT1)):-
+expression1(TSBefore,TSAfter,expr(OP,RT0,RT1)):-
     expression0(TSBefore,[OP|TSAfter1],RT0),
     op2(OP),
     expression1(TSAfter1,TSAfter,RT1).
@@ -165,7 +165,6 @@ expression(TSBefore,TSAfter,expr(OP,RT1,RTSub)):-
     op1(OP),
     expression(TSAfter1,TSAfter,RTSub).
 expression(TSBefore,TSAfter,RT):- expression1(TSBefore,TSAfter,RT).
-
 
 %% <ifStmt> --> if <test> then <stmt> else <stmt>
 ifStatement([if | TSBefore],TSAfter,if(TestRT,ThenRT,ElseRT)):-
@@ -187,10 +186,16 @@ typecheck(FileName):-
     phrase(tokenize(TSBefore), ProgramString),
     program(TSBefore, [], RT),
     RT = (declarations(DeclarationList),statements(StatementList)),
-    createDictionary(DeclarationList,VariablesDictionary),
+    createDictionary(DeclarationList,VariablesDictionary),!,
     traverse(StatementList, VariablesDictionary,ErrorReport).
     %% reportError(FirstError).
 
+parseTree(FileName,RT):- 
+    open(FileName, 'read', InputStream),
+    read_stream_to_codes(InputStream, ProgramString),
+    close(InputStream),
+    phrase(tokenize(TSBefore), ProgramString),
+    program(TSBefore, [], RT).
 
 %% Dictionary code
 
@@ -238,7 +243,7 @@ validAssignment(float,int).
  
 %% Expressions:
 %% (+, string, string, string).
-validExpresion(+,string,string,string).
+validExpression(+,string,string,string).
 %% (_, int, int, int).
 validExpression(_,int,int,int).
 %% (_, int, float, float).
@@ -268,5 +273,30 @@ traverse([Statement|Rest],Variables,ErrorReport):-
     checkStatement(Statement,Variables,ErrorReport),
     traverse(Rest,Variables,ErrorReport).
 
-checkStatement(Statement,Variables,ErrorReport):-
-    write(Statement).
+
+checkStatement(assign(name(ID),expression(ExpTree)),Variables,ErrorReport):-
+    lookup(ID,Variables,LeftSideType),
+    checkExpression(ExpTree,RightSideType,Variables),
+    validAssignment(LeftSideType,RightSideType).
+
+checkStatement(if(Test,TrueStatements,FalseStatements),Variables,ErrorReport):-
+    checkTest(Test,Variables,ErrorReport),
+    checkStatement(TrueStatements,Variables,ErrorReport),
+    checkStatement(FalseStatements,Variables,ErrorReport).
+
+checkExpression(id(Name),Type,Dictionary):-
+    lookup(Name,Dictionary,Type).
+checkExpression(int(_),int,_).
+checkExpression(float(_),float,_).
+checkExpression(string(_),string,_).
+
+checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary):-
+    checkExpression(LeftTerm,LeftType,Dictionary),
+    checkExpression(RightTerm,RightType,Dictionary),
+    validExpression(OP,ResultType,LeftType,RightType).
+
+checkTest(name(_),_,_).
+checkTest(test(OP,LeftExp,RightExp),ResultType,Dictionary):-
+    checkExpression(LeftExp,LeftType,Dictionary),
+    checkExpression(RightExp,RightType,Dictionary),
+    validComp(OP,LeftType,RightType).
