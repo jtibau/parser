@@ -67,30 +67,6 @@ tokenize([N|R]) --> [C],{C>32},
                         {name(N,[C])},tokenize(R).
 tokenize([])-->[].
 
-
-%% Dictionary code
-
-%lookup(+identifier,+dictionary,-result)
-lookup(Nm,dic(Nm,Val,_,_),Val).
-lookup(Nm,dic(Other,_,Left,_),Val):-
-       Nm @< Other, lookup(Nm,Left,Val).
-lookup(Nm,dic(Other,_,_,Right),Val):-
-       Other @< Nm, lookup(Nm,Right,Val).
-
-%% /*  **creating a dictionary by using lookup!**  */
-%% p(D):- lookup(salt,D,X1),
-%%          lookup(mustard,D,X2),
-%%          lookup(egg,D,X3).
-
-%% %% free variables dict(Nm,**Var**,_,_) are 'waiting' to be filled
-%% %% by the next lookup of Nm. Also, free vars at leafs are waiting for
-%% %% data structure to be extended
-%% p2(D) :- p(D),  lookup(egg,D,oef).
-
-%% %% trying to look up a name  with an actual value, fills the **Var**!
-%% p3(D):-p(D), lookup(mustard,D,dijon).
-%% p4(D):-p(D), lookup(salt,D, X5). %% lookup with another var is no-op
-
 %% <program> --> <type-decl-stmts> ; <stmts>   
 program(TSBefore, TSAfter, (declarations(DeclarationTree),statements(StatementList))) :-
      typeDeclarationStatementList(TSBefore, TSAfterDeclaration, DeclarationTree),
@@ -204,11 +180,93 @@ test(TSBefore,TSAfter,test(OP,FirstExpRT,SecondExpRT)):-
     expression(TSAfterE,TSAfter,SecondExpRT).
 test([Name|TSAfter],TSAfter,name(Name)):- name(Name).
 
-typecheck(FileName,RT):- 
+typecheck(FileName):- 
     open(FileName, 'read', InputStream),
     read_stream_to_codes(InputStream, ProgramString),
     close(InputStream),
     phrase(tokenize(TSBefore), ProgramString),
-    program(TSBefore, [], RT).
-    %% traverse(RT, FirstError),
+    program(TSBefore, [], RT),
+    RT = (declarations(DeclarationList),statements(StatementList)),
+    createDictionary(DeclarationList,VariablesDictionary),
+    traverse(StatementList, VariablesDictionary,ErrorReport).
     %% reportError(FirstError).
+
+
+%% Dictionary code
+
+%lookup(+identifier,+dictionary,-result)
+lookup(Nm,dic(Nm,Val,_,_),Val).
+lookup(Nm,dic(Other,_,Left,_),Val):-
+       Nm @< Other, lookup(Nm,Left,Val).
+lookup(Nm,dic(Other,_,_,Right),Val):-
+       Other @< Nm, lookup(Nm,Right,Val).
+
+%% /*  **creating a dictionary by using lookup!**  */
+%% p(D):- lookup(salt,D,X1),
+%%          lookup(mustard,D,X2),
+%%          lookup(egg,D,X3).
+
+%% %% free variables dict(Nm,**Var**,_,_) are 'waiting' to be filled
+%% %% by the next lookup of Nm. Also, free vars at leafs are waiting for
+%% %% data structure to be extended
+%% p2(D) :- p(D),  lookup(egg,D,oef).
+
+%% %% trying to look up a name  with an actual value, fills the **Var**!
+%% p3(D):-p(D), lookup(mustard,D,dijon).
+%% p4(D):-p(D), lookup(salt,D, X5). %% lookup with another var is no-op
+
+createDictionary([],_).
+createDictionary([Decl|DeclList],Dictionary):-
+    registerDeclaration(Decl,Dictionary),
+    createDictionary(DeclList,Dictionary).
+
+registerDeclaration(typeDeclaration(Type,NameList),Dictionary):-
+    registerVariables(Type,NameList,Dictionary).
+
+registerVariables(_,[],_).
+registerVariables(Type,[Name|Names],Dictionary):-
+    lookup(Name,Dictionary,Type),
+    registerVariables(Type,Names,Dictionary).
+
+
+%% Using Audrey Decker's simplified list of valid operations
+%% Assignments:
+%% (X, X).
+validAssignment(X,X).
+%% (float, int).
+validAssignment(float,int).
+ 
+%% Expressions:
+%% (+, string, string, string).
+validExpresion(+,string,string,string).
+%% (_, int, int, int).
+validExpression(_,int,int,int).
+%% (_, int, float, float).
+validExpression(_,int,float,float).
+%% (_, float, int, float).
+validExpression(_,float,int,float).
+%% (_, float, float, float).
+validExpression(_,float,float,float).
+
+%% Comparisons:
+%% (==, X, X).
+validComp(==,X,X).
+%% (<>, X, X).
+validComp(<>,X,X).
+%% (_, int, int).
+validComp(_,int,int).
+%% (_, float, int).
+validComp(_,float,float).
+%% (_, int, float).
+validComp(_,int,float).
+%% (_, float, float).
+validComp(_,float,int).
+
+
+traverse([],_,_).
+traverse([Statement|Rest],Variables,ErrorReport):-
+    checkStatement(Statement,Variables,ErrorReport),
+    traverse(Rest,Variables,ErrorReport).
+
+checkStatement(Statement,Variables,ErrorReport):-
+    write(Statement).
