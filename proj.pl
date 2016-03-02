@@ -179,7 +179,7 @@ test(TSBefore,TSAfter,test(OP,FirstExpRT,SecondExpRT)):-
     expression(TSAfterE,TSAfter,SecondExpRT).
 test([Name|TSAfter],TSAfter,name(Name)):- name(Name).
 
-typecheck(FileName):- 
+typecheck(FileName,ErrorReport):- 
     open(FileName, 'read', InputStream),
     read_stream_to_codes(InputStream, ProgramString),
     close(InputStream),
@@ -279,6 +279,12 @@ checkStatement(assign(name(ID),expression(ExpTree)),Variables,ErrorReport):-
     checkExpression(ExpTree,RightSideType,Variables),
     validAssignment(LeftSideType,RightSideType).
 
+checkStatement(assign(name(ID),expression(ExpTree)),Variables,ErrorReport):-
+    lookup(ID,Variables,LeftSideType),
+    checkExpression(ExpTree,RightSideType,Variables),
+    \+validAssignment(LeftSideType,RightSideType),!,
+    ErrorReport = "Test".
+
 checkStatement(if(Test,TrueStatements,FalseStatements),Variables,ErrorReport):-
     checkTest(Test,Variables,ErrorReport),
     checkStatement(TrueStatements,Variables,ErrorReport),
@@ -295,8 +301,20 @@ checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary):-
     checkExpression(RightTerm,RightType,Dictionary),
     validExpression(OP,ResultType,LeftType,RightType).
 
+checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary):-
+    checkExpression(LeftTerm,LeftType,Dictionary),
+    checkExpression(RightTerm,RightType,Dictionary),
+    \+validExpression(OP,ResultType,LeftType,RightType),!,
+    ErrorReport = "Test".
+
 checkTest(name(_),_,_).
 checkTest(test(OP,LeftExp,RightExp),ResultType,Dictionary):-
     checkExpression(LeftExp,LeftType,Dictionary),
     checkExpression(RightExp,RightType,Dictionary),
     validComp(OP,LeftType,RightType).
+
+checkTest(test(OP,LeftExp,RightExp),ResultType,Dictionary):-
+    checkExpression(LeftExp,LeftType,Dictionary),
+    checkExpression(RightExp,RightType,Dictionary),
+    \+validComp(OP,LeftType,RightType),!,
+    ErrorReport = "Test".
