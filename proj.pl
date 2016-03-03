@@ -190,12 +190,14 @@ typecheck(FileName,ErrorReport):-
     traverse(StatementList, VariablesDictionary,ErrorReport).
     %% reportError(FirstError).
 
-parseTree(FileName,RT):- 
+parseTree(FileName,TSBefore,RT):- 
     open(FileName, 'read', InputStream),
     read_stream_to_codes(InputStream, ProgramString),
     close(InputStream),
     phrase(tokenize(TSBefore), ProgramString),
     program(TSBefore, [], RT).
+
+
 
 %% Dictionary code
 
@@ -230,7 +232,7 @@ registerDeclaration(typeDeclaration(Type,NameList),Dictionary):-
 
 registerVariables(_,[],_).
 registerVariables(Type,[Name|Names],Dictionary):-
-    lookup(Name,Dictionary,Type),
+    lookup(Name,Dictionary,Type),!,
     registerVariables(Type,Names,Dictionary).
 
 
@@ -268,53 +270,78 @@ validComp(_,int,float).
 validComp(_,float,int).
 
 
-traverse([],_,_).
-traverse([Statement|Rest],Variables,ErrorReport):-
-    checkStatement(Statement,Variables,ErrorReport),
-    traverse(Rest,Variables,ErrorReport).
+traverse([],_,[]).
 
+traverse([Statement|Rest],Variables,ER):-
+    checkStatement(Statement,Variables,FirstError),
+    traverse(Rest,Variables,RestErrorReport),
+    append(FirstError,RestErrorReport,ER).
+
+
+checkStatement(assign(name(ID),expression(ExpTree)),Variables,ER):-
+    lookup(ID,Variables,LeftType),
+    checkExpression(ExpTree,RightType,Variables,ExpErrorReport),
+    \+validAssignment(LeftType,RightType),!,
+    AssignmentErrorReport = [(=,LeftType,RightType)],
+    append(ExpErrorReport,AssignmentErrorReport,ER).
 
 checkStatement(assign(name(ID),expression(ExpTree)),Variables,ErrorReport):-
-    lookup(ID,Variables,LeftSideType),
-    checkExpression(ExpTree,RightSideType,Variables),
-    validAssignment(LeftSideType,RightSideType).
+    lookup(ID,Variables,LeftType),
+    checkExpression(ExpTree,RightType,Variables,ErrorReport),
+    validAssignment(LeftType,RightType).
 
-checkStatement(assign(name(ID),expression(ExpTree)),Variables,ErrorReport):-
-    lookup(ID,Variables,LeftSideType),
-    checkExpression(ExpTree,RightSideType,Variables),
-    \+validAssignment(LeftSideType,RightSideType),!,
-    ErrorReport = "Test".
 
-checkStatement(if(Test,TrueStatements,FalseStatements),Variables,ErrorReport):-
-    checkTest(Test,Variables,ErrorReport),
-    checkStatement(TrueStatements,Variables,ErrorReport),
-    checkStatement(FalseStatements,Variables,ErrorReport).
 
-checkExpression(id(Name),Type,Dictionary):-
+checkStatement(if(Test,TrueStatements,FalseStatements),Variables,ER):-
+    checkTest(Test,Variables,TestErrors),
+    checkStatement(TrueStatements,Variables,TrueErrors),
+    checkStatement(FalseStatements,Variables,FalseErrors),
+    append(TestErrors,TrueErrors,ER1),
+    append(ER1,FalseErrors,ER).
+
+checkExpression(id(Name),Type,Dictionary,[]):-
     lookup(Name,Dictionary,Type).
-checkExpression(int(_),int,_).
-checkExpression(float(_),float,_).
-checkExpression(string(_),string,_).
+checkExpression(int(_),int,_,[]).
+checkExpression(float(_),float,_,[]).
+checkExpression(string(_),string,_,[]).
 
-checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary):-
-    checkExpression(LeftTerm,LeftType,Dictionary),
-    checkExpression(RightTerm,RightType,Dictionary),
-    validExpression(OP,ResultType,LeftType,RightType).
+checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary,ER):-
+    checkExpression(LeftTerm,LeftType,Dictionary,LeftErrors),
+    checkExpression(RightTerm,RightType,Dictionary,RightErrors),
+    \+validExpression(OP,LeftType,RightType,ResultType),!,
+    ExpressionErrorReport = [(OP,LeftType,RightType,ResultType)],
+    append(LeftErrors,RightErrors,ER1),
+    append(ER1,ExpressionErrorReport,ER).
 
-checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary):-
-    checkExpression(LeftTerm,LeftType,Dictionary),
-    checkExpression(RightTerm,RightType,Dictionary),
-    \+validExpression(OP,ResultType,LeftType,RightType),!,
-    ErrorReport = "Test".
+checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary,ER):-
+    checkExpression(LeftTerm,LeftType,Dictionary,LeftErrors),
+    checkExpression(RightTerm,RightType,Dictionary,RightErrors),
+    validExpression(OP,LeftType,RightType,ResultType),
+    append(LeftErrors,RightErrors,ER).
 
-checkTest(name(_),_,_).
-checkTest(test(OP,LeftExp,RightExp),ResultType,Dictionary):-
-    checkExpression(LeftExp,LeftType,Dictionary),
-    checkExpression(RightExp,RightType,Dictionary),
-    validComp(OP,LeftType,RightType).
 
-checkTest(test(OP,LeftExp,RightExp),ResultType,Dictionary):-
-    checkExpression(LeftExp,LeftType,Dictionary),
-    checkExpression(RightExp,RightType,Dictionary),
+checkTest(name(Name),Dictionary,ErrorReport):-
+    lookup(Name,Dictionary,Type),
+    Type \= bool,!,
+    ErrorReport = [Name].
+
+
+checkTest(name(Name),Dictionary,[]):-
+    lookup(Name,Dictionary,Type),
+    Type = bool.
+
+
+
+checkTest(test(OP,LeftExp,RightExp),Dictionary,ER):-
+    checkExpression(LeftExp,LeftType,Dictionary,LeftErrors),
+    checkExpression(RightExp,RightType,Dictionary,RightErrors),
     \+validComp(OP,LeftType,RightType),!,
-    ErrorReport = "Test".
+    TestErrorReport = [(OP,LeftType,RightType)],
+    append(LeftErrors,RightErrors,ER1),
+    append(ER1,TestErrorReport,ER).
+
+checkTest(test(OP,LeftExp,RightExp),Dictionary,ER):-
+    checkExpression(LeftExp,LeftType,Dictionary,LeftErrors),
+    checkExpression(RightExp,RightType,Dictionary,RightErrors),
+    validComp(OP,LeftType,RightType),
+    append(LeftErrors,RightErrors,ER).
