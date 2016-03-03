@@ -1,3 +1,5 @@
+%% Author: Javier Tibau
+
 list([H|T],H,T).
 
 %% Tokenizer code
