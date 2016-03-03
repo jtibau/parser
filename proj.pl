@@ -226,11 +226,17 @@ lookup(Nm,dic(Other,_,_,Right),Val):-
 %% p3(D):-p(D), lookup(mustard,D,dijon).
 %% p4(D):-p(D), lookup(salt,D, X5). %% lookup with another var is no-op
 
+
+%% createDictionary(+Statements,+Dictionary)
+%% Goes through the list of declaration statements and adds all 
+%%  variables with their appropriate types to the Dictionary
 createDictionary([],_).
 createDictionary([Decl|DeclList],Dictionary):-
     registerDeclaration(Decl,Dictionary),
     createDictionary(DeclList,Dictionary).
 
+%% Auxiliary function of createDictionary to look through list of Names
+%%  inside a declaration statement
 registerDeclaration(typeDeclaration(Type,NameList),Dictionary):-
     registerVariables(Type,NameList,Dictionary).
 
@@ -240,7 +246,7 @@ registerVariables(Type,[Name|Names],Dictionary):-
     registerVariables(Type,Names,Dictionary).
 
 
-%% Using Audrey Decker's simplified list of valid operations
+%% Using Audrey Decker's simplified list of valid operations, posted in Piazza
 %% Assignments:
 %% (X, X).
 validAssignment(X,X).
@@ -274,35 +280,53 @@ validComp(_,int,float).
 validComp(_,float,int).
 
 
+%% traverse(+Statements,+Variables,-Errors)
+%%  takes the list of statements that come after the declarations
+%%  takes the dictionary of variables that was created with createDictionary
+%% Looks for type errors and collects them in the list Errors
+%% typecheck later prints the list Errors
+
+
+%% End of Recurssion, No errors possible.
 traverse([],_,[]).
 
+%% Segments the list of statements and facilitates recursion
+%% Errors are concatenated
 traverse([Statement|Rest],Variables,ER):-
     checkStatement(Statement,Variables,FirstError),
     traverse(Rest,Variables,RestErrorReport),
     append(FirstError,RestErrorReport,ER).
 
 
+%% Helper function to check if variable is Unbound
+%%  Meaning it was not declared and has no type
+%%  Used the same as lookup
+typeOf(Name, TypeNameDictionary, Type) :-
+   lookup(Name, TypeNameDictionary, Type),
+   var(Type),!,
+   write("Unbound Variable: "),
+   writeln(Name).
+typeOf(Name, TypeNameDictionary, Type) :-
+   lookup(Name, TypeNameDictionary, Type).
+
+%% takes an assignment statement processes its parts
+%% this first case deals with the invalid assignments
+%%  according to the rules in validAssignment
 checkStatement(assign(name(ID),expression(ExpTree),code(Text)),Variables,ER):-
-    lookup(ID,Variables,LeftType),
+    typeOf(ID,Variables,LeftType),
     checkExpression(ExpTree,RightType,Variables,ExpErrorReport,Text),
     \+validAssignment(LeftType,RightType),!,
     AssignmentErrorReport = [(=,LeftType,RightType)],
-    writeln(Text),
+    writeln(Text),!,
     append(ExpErrorReport,AssignmentErrorReport,ER).
 
 checkStatement(assign(name(ID),expression(ExpTree),code(Text)),Variables,ErrorReport):-
-    lookup(ID,Variables,LeftType),
-    var(LeftType),
-    writeln(Text),
+    typeOf(ID,Variables,LeftType),
     checkExpression(ExpTree,RightType,Variables,ErrorReport,Text),
     validAssignment(LeftType,RightType).
 
-checkStatement(assign(name(ID),expression(ExpTree),code(Text)),Variables,ErrorReport):-
-    lookup(ID,Variables,LeftType),
-    checkExpression(ExpTree,RightType,Variables,ErrorReport,Text),
-    validAssignment(LeftType,RightType).
-
-
+%% takes a conditional statement processes its parts
+%% the individual bits handle the error messages and this concatenates whatever it receives
 checkStatement(if(Test,TrueStatements,FalseStatements),Variables,ER):-
     checkTest(Test,Variables,TestErrors),
     checkStatement(TrueStatements,Variables,TrueErrors),
@@ -310,24 +334,23 @@ checkStatement(if(Test,TrueStatements,FalseStatements),Variables,ER):-
     append(TestErrors,TrueErrors,ER1),
     append(ER1,FalseErrors,ER).
 
-checkExpression(id(Name),Type,Dictionary,ER,Text):-
-    lookup(Name,Dictionary,Type),
-    var(Type),
-    writeln(Text),
-    ER = [Name].
 
+%% Simple expressions consisting of atoms.
+%% The only possible error is unbound variables and is handled by typeOf
 checkExpression(id(Name),Type,Dictionary,[],_):-
-    lookup(Name,Dictionary,Type).
+    typeOf(Name,Dictionary,Type).
 checkExpression(int(_),int,_,[],_).
 checkExpression(float(_),float,_,[],_).
 checkExpression(string(_),string,_,[],_).
 
+%% Complex expressions handled with heavy recursion
+%%  First one considers invalid operations according to operand rules above
 checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary,ER,Text):-
     checkExpression(LeftTerm,LeftType,Dictionary,LeftErrors,Text),
     checkExpression(RightTerm,RightType,Dictionary,RightErrors,Text),
     \+validExpression(OP,LeftType,RightType,ResultType),!,
     ExpressionErrorReport = [(OP,LeftType,RightType,ResultType)],
-    writeln(Text),
+    writeln(Text),!,
     append(LeftErrors,RightErrors,ER1),
     append(ER1,ExpressionErrorReport,ER).
 
@@ -338,24 +361,25 @@ checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary,ER,Text):-
     append(LeftErrors,RightErrors,ER).
 
 
+%% most basic way to fail the conditional statament
+%%  ie, the single variable is not bool
+%%  unbound would also crack here
 checkTest(name(Name),Dictionary,ErrorReport):-
-    lookup(Name,Dictionary,Type),
+    typeOf(Name,Dictionary,Type),
     Type \= bool,!,
     ErrorReport = [Name].
 
-
 checkTest(name(Name),Dictionary,[]):-
-    lookup(Name,Dictionary,Type),
+    typeOf(Name,Dictionary,Type),
     Type = bool.
 
-
-
+%% Complex expressions handled with heavy recursion
 checkTest(test(OP,LeftExp,RightExp,code(Text)),Dictionary,ER):-
     checkExpression(LeftExp,LeftType,Dictionary,LeftErrors,Text),
     checkExpression(RightExp,RightType,Dictionary,RightErrors,Text),
     \+validComp(OP,LeftType,RightType),!,
     TestErrorReport = [(OP,LeftType,RightType)],
-    writeln(Text),
+    writeln(Text),!,
     append(LeftErrors,RightErrors,ER1),
     append(ER1,TestErrorReport,ER).
 
