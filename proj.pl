@@ -136,12 +136,14 @@ statementList(TSBefore,TSAfter,[RT1|RTR]):-
 %% <stmt> --> <assignStmt> | <ifStmt>
 statement(TSBefore,TSAfter,RT):- assignmentStmt(TSBefore,TSAfter,RT).
 
+
 statement(TSBefore,TSAfter,RT):- ifStatement(TSBefore,TSAfter,RT).
 
 %% <assignStmt> -->  <id> = <expr>
-assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpRT))):-
+assignmentStmt([ID,=|TSBefore],TSAfter,assign(name(ID),expression(ExpRT),code(Text))):-
     id(ID),
-    expression(TSBefore,TSAfter,ExpRT).
+    expression(TSBefore,TSAfter,ExpRT),
+    atomic_list_concat(TSBefore,' ',Text).
 
 
 %% <expr0> --> <id> | <integer> | <numWDecimal> | <stringLiteral> | (<expr>) 
@@ -278,14 +280,15 @@ traverse([Statement|Rest],Variables,ER):-
     append(FirstError,RestErrorReport,ER).
 
 
-checkStatement(assign(name(ID),expression(ExpTree)),Variables,ER):-
+checkStatement(assign(name(ID),expression(ExpTree),code(Text)),Variables,ER):-
     lookup(ID,Variables,LeftType),
     checkExpression(ExpTree,RightType,Variables,ExpErrorReport),
     \+validAssignment(LeftType,RightType),!,
     AssignmentErrorReport = [(=,LeftType,RightType)],
+    write(Text),
     append(ExpErrorReport,AssignmentErrorReport,ER).
 
-checkStatement(assign(name(ID),expression(ExpTree)),Variables,ErrorReport):-
+checkStatement(assign(name(ID),expression(ExpTree),code(Text)),Variables,ErrorReport):-
     lookup(ID,Variables,LeftType),
     checkExpression(ExpTree,RightType,Variables,ErrorReport),
     validAssignment(LeftType,RightType).
