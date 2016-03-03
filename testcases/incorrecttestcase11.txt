@@ -1,0 +1,14 @@
+int a, b,c, d;
+float x, x1, y, y1, z, z1;
+bool bool1, bool2;
+string s1, s2, s3;
+int e;
+
+if b <> c then
+	z1 = (x+y-z) + (b*c+3)
+else 
+	if bool2 then
+		bool1 = s2
+	else
+		s2 = s1 - s3
+	

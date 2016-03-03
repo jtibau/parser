@@ -1,0 +1,4 @@
+float x, x1, y, y1, z, z1;
+string s1, s2, s3;
+
+x1 = 23.821 - s1
