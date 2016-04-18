@@ -1,0 +1,15 @@
+struct {
+	int a;
+	int b;
+} st1;
+
+struct {
+	int a;
+	int b;
+	int c;
+} st2;
+
+st1.a = st2.a;
+st2.c = st2.c;
+st1.c = st2.c;
+

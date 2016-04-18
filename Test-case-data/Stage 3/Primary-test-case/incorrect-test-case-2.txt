@@ -1,0 +1,7 @@
+int [10] a;
+int [5][2] b;
+int [5][2] c;
+float [10] d;
+
+b = c;
+a = d

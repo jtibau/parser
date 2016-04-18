@@ -1,0 +1,15 @@
+struct {
+	string s1;
+	float y;
+	int b1;
+} A, A1, a123;
+
+struct {
+	string s1;
+	int y;
+	int b1;
+} B, B2, B234;
+
+A.y = (23.821-60+3.56);
+B2.s1 = "Hello";
+B234.y = 49 * B.y * 3 / (B.y-(B2.y+123))

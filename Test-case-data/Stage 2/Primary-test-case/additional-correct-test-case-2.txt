@@ -1,0 +1,44 @@
+int a, b,c, d;
+float x, x1, y, y1, z, z1;
+bool bool1, bool2;
+string s1, s2, s3;
+int e;
+
+
+struct {
+	int p1;
+	int p24A65;
+	float f87HK9;
+	float f;
+	string s1;
+} A, A1, a123;
+
+struct {
+	int p1;
+	int p24A65;
+	float f87HK9;
+	int f;
+	string s1;
+} B, B2, B234;
+
+
+if B2.p1 <> A1.f then
+	A1 = A
+else
+	B = B2;
+
+B.f87HK9 = B234.f87HK9;
+
+
+if (B.f) >= A1.p24A65 then
+	A = a123
+else
+	if a123.f87HK9 <= (B2.f87HK9) then
+		a123 = A1
+	else 
+		if B234.f < A1.f then
+			B2.p1 = 5 + 3
+		else
+			B = B2;
+
+B234 = B

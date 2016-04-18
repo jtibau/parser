@@ -1,0 +1,19 @@
+struct {
+	int a;
+	int b;
+	int c;
+	bool d;
+	string s1;
+	float f;
+} X;
+
+struct {
+	int a;
+	int b;
+	int c;
+	bool d;
+	string s2;
+	float f;
+} Y;
+
+X = Y

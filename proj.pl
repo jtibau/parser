@@ -369,7 +369,8 @@ checkExpression(expr(OP,LeftTerm,RightTerm),ResultType,Dictionary,ER,Text):-
 checkTest(name(Name),Dictionary,ErrorReport):-
     typeOf(Name,Dictionary,Type),
     Type \= bool,!,
-    ErrorReport = [Name].
+    ErrorReport = [('not bool',Name)],
+    writeln(Name).
 
 checkTest(name(Name),Dictionary,[]):-
     typeOf(Name,Dictionary,Type),

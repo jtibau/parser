@@ -1,0 +1,14 @@
+struct {
+	int x;
+	float y;
+} A, A1, a123;
+
+struct {
+	int x;
+	int y;
+} B, B2, B234;
+
+A.y = (B.x);
+A.y = B.y;
+B.x = B.y + A.x;
+A.y = A.x + B.x - B.y
